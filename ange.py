@@ -314,6 +314,19 @@ def receiveItem():
     collectCount += 1
   return '%s pages collected' % (collectCount)
 
+def donate():
+  ClanInvestmentPage_link = '/ange/clan/ClanInvestmentPage;jsessionid=%s?bkto=clan/ClanTopPage&clid=341166' % (_jsessionid)
+  ClanInvestmentPage = ange_request(ClanInvestmentPage_link)
+  currentMoney = int(ClanInvestmentPage.xpath('//span[@id="my_money"]/text()')[0])
+  donateValue = 100000
+  donatedMoney = 0
+  while currentMoney > (donateValue * 1.5):
+    ClanInvestmentPage_link = '/ange/clan/ClanInvestmentPage;jsessionid=%s?from=clInvDn&historyBack_deny=1&invest=%s' % (_jsessionid, donateValue)
+    ClanInvestmentPage = ange_request(ClanInvestmentPage_link)
+    currentMoney = int(ClanInvestmentPage.xpath('//span[@id="my_money"]/text()')[0])
+    donatedMoney += donateValue
+  return '%s donated' % (donatedMoney)
+
 def smartCombat():
   ange_MyPage()
   if int(config.get('ange', 'DO_COMBAT')) != 2:
