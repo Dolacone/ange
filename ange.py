@@ -428,11 +428,11 @@ def auto():
       elif not _raidBoss and _sp > int(config.get('ange', 'QUEST_SP_MIN')) and int(config.get('ange', 'DO_EVENT')) == 1:
         # do event only for specified user
         doEvent()
+      elif _helpBoss and not _clanBattle and (_sp < _sp_max) and int(config.get('ange', 'DO_HELP')) == 1:
+        doHelp()
       elif not _raidBoss and _sp > int(config.get('ange', 'QUEST_SP_MIN')):
         # do quest only if sp is high
         quest(adam=True)
-      elif _helpBoss and not _clanBattle and int(config.get('ange', 'DO_HELP')) == 1:
-        doHelp()
       elif _clanBattle and int(config.get('ange', 'DO_COMBAT')) == 2:
         doSmartCombat()
       else:
