@@ -324,7 +324,7 @@ def gacha():
   GachaBronzePage = ange_request(GachaBronzePage_link)
   gachaPoint = int(GachaBronzePage.xpath('//div[@class="goldInfo"]//span[@class="fontRed"]/text()')[0])
   gachaCount = 0
-  while gachaPoint >= 100:
+  while gachaPoint >= 1000:
     GachaAnimationPage_link = '/ange/gacha/GachaAnimationPage;jsessionid=%s?gcty=BRONZE&gccnt=10' % (_jsessionid)
     GachaAnimationPage = ange_request(GachaAnimationPage_link)
     gachaCount += 10
@@ -454,6 +454,18 @@ def clanSim():
     
   return 'clanSim %s rounds' % (battleCount)
 
+def eventPuzzle():
+  ange_MyPage()
+  EventPuzzleTopPage_link = '/ange/eventPuzzle/EventPuzzleTopPage;jsessionid=%s' % (_jsessionid)
+  EventPuzzleTopPage = ange_request(EventPuzzleTopPage_link)
+  eventCount = 0
+  while re.findall('href=\"(.*EventPuzzleStoryPage.*)\"', etree.tostring(EventPuzzleTopPage)):
+    EventPuzzleStoryPage_link = re.findall('href=\"(.*EventPuzzleStoryPage.*)\"', etree.tostring(EventPuzzleTopPage))[0]
+    EventPuzzleTopPage = ange_request(EventPuzzleStoryPage_link)
+    eventCount += 1
+  return '%s event puzzle' % (eventCount)
+  
+
 def status():
   ange_MyPage()
   commandString = 'ps aux | grep "ange.py %s auto" | wc -l' % (ange_botName)
@@ -494,7 +506,7 @@ def auto():
         doHelp()
       elif not _raidBoss and _sp > int(config.get('ange', 'QUEST_SP_MIN')):
         # do quest only if sp is high
-        quest(adam=True)
+        quest(adam=int(config.get('ange', 'DO_ADAM')))
       elif _clanBattle and int(config.get('ange', 'DO_COMBAT')) == 2:
         doCombat_combo()
       elif _clanBattle and int(config.get('ange', 'DO_COMBAT')) == 3:
