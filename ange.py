@@ -67,6 +67,9 @@ def ange_request(path):
         content_html = html_cleaner(content)
         parser = etree.HTMLParser()
         content_lxml = etree.parse(StringIO(content_html), parser)
+        next_url = content_lxml.xpath('//span[@id="nextUrl"]/text()')
+        if next_url:
+          return ange_request(next_url[0])
         return content_lxml
     except:
       continue
@@ -161,7 +164,7 @@ def doEvent():
   
   # find stage link from event top page
   MapSelectPage_link = re.findall('href=\"(.*MapSelectPage.*)\" ', etree.tostring(EventTopPage))[0]
-  '''
+  type 1 ends '''
   
   ''' type 2: additional link in stage selection '''
   MyPage = ange_MyPage()
@@ -312,7 +315,24 @@ def receiveItem():
     PresentListItemPage = ange_request(PresentListItemPage_link)
     presentCount = int(re.search('(\d+)', PresentListItemPage.xpath('//div[@class="tabDiv"]//span[@id="presentTotalNum"]/text()')[0]).group(1))
     collectCount += 1
+  clanSim()
   return '%s pages collected' % (collectCount)
+
+def gacha():
+  ange_MyPage()
+  GachaBronzePage_link = '/ange/gacha/GachaBronzePage;jsessionid=%s' % (_jsessionid)
+  GachaBronzePage = ange_request(GachaBronzePage_link)
+  gachaPoint = int(GachaBronzePage.xpath('//div[@class="goldInfo"]//span[@class="fontRed"]/text()')[0])
+  gachaCount = 0
+  while gachaPoint >= 100:
+    GachaAnimationPage_link = '/ange/gacha/GachaAnimationPage;jsessionid=%s?gcty=BRONZE&gccnt=10' % (_jsessionid)
+    GachaAnimationPage = ange_request(GachaAnimationPage_link)
+    gachaCount += 10
+    
+    GachaBronzePage_link = '/ange/gacha/GachaBronzePage;jsessionid=%s' % (_jsessionid)
+    GachaBronzePage = ange_request(GachaBronzePage_link)
+    gachaPoint = int(GachaBronzePage.xpath('//div[@class="goldInfo"]//span[@class="fontRed"]/text()')[0])
+  return '%s units gacha' % (gachaCount)
 
 def donate():
   ClanInvestmentPage_link = '/ange/clan/ClanInvestmentPage;jsessionid=%s?bkto=clan/ClanTopPage&clid=341166' % (_jsessionid)
@@ -332,12 +352,12 @@ def smartCombat():
   if int(config.get('ange', 'DO_COMBAT')) != 2:
     return 'SMART_COMBAT FLAG is off'
   while _clanBattle is True:
-    doSmartCombat()
+    doCombat_combo()
     ange_MyPage()
     time.sleep(10)
   return 'battle ended'
 
-def doSmartCombat():
+def doCombat_combo():
   ange_MyPage()
   CombatTopPage_link = '/ange/combat/CombatTopPage;jsessionid=%s' % (_jsessionid)
   CombatTopPage = ange_request(CombatTopPage_link)
@@ -369,7 +389,30 @@ def doSmartCombat():
     doCombatHospital()
   
   return False
+
+def doCombat_crystal():
+  ange_MyPage()
+  CombatTopPage_link = '/ange/combat/CombatTopPage;jsessionid=%s' % (_jsessionid)
+  CombatTopPage = ange_request(CombatTopPage_link)
+  CombatMainPage_link = '/ange/combat/CombatMainPage;jsessionid=%s?historyBack_deny=1' % (_jsessionid)
+  CombatMainPage = ange_request(CombatMainPage_link)
+  comboCount  = int(CombatMainPage.xpath('//span[@id="prm_combo_num"]/text()')[0])
+  comboMyself = int(CombatMainPage.xpath('//span[@id="prm_is_combo_myself"]/text()')[0])
+  comboTime   = int(CombatMainPage.xpath('//span[@id="prm_combo_chance_time"]/text()')[0])
+  # decicde to battle or not
+  if (comboCount % 10 is 0):
+    fightUnit_list = CombatMainPage.xpath('//div[@id="prm_border_infos"]/span/text()')
+    fightingUnit   = doCombatPickUnit(fightUnit_list, 5)
+    if fightingUnit is None:
+      doCombatHospital()
+      return False
+    CombatRedirectPage_link = '/ange/combat/CombatRedirectPage;jsessionid=%s?historyBack_deny=1&ucid=%s' % (_jsessionid, ','.join(fightingUnit))
+    CombatRedirectPage = ange_request(CombatRedirectPage_link)
+    return True
   
+  if int(_bp) < int(_bp_max):
+    doCombatHospital()
+  return False
 
 def doCombat():
   ange_MyPage()
@@ -391,6 +434,25 @@ def doCombat():
     CombatRedirectPage_link = '/ange/combat/CombatRedirectPage;jsessionid=%s?historyBack_deny=1&ucid=%s' % (_jsessionid, ','.join(fightingUnit))
     CombatRedirectPage = ange_request(CombatRedirectPage_link)
   return '3 battle ends'
+
+def clanSim():
+  ange_MyPage()
+  ClanMemberListPage_link = '/ange/clan/ClanMemberListPage;jsessionid=%s' % (_jsessionid)
+  ClanMemberListPage = ange_request(ClanMemberListPage_link)
+  battleTicket = int(ClanMemberListPage.xpath('//div[@class="msgArea"]//span[@class="fontRed"]/text()')[0])
+  battleCount = 0
+  while battleTicket > 0:
+    battleTarget = ClanMemberListPage.xpath('//span[@class="userID"]/text()')[0]
+    battleUnit   = ClanMemberListPage.xpath('//span[@class="battleID"]/text()')[0]
+    BattleAnimationPage_link = '/ange/battle/BattleAnimationPage;jsessionid=%s?bcid=MOCK&historyBack_deny=1&from=clan/ClanMemberListPage&ucid=%s&userid=%s' % (_jsessionid, battleUnit, battleTarget)
+    BattleAnimationPage = ange_request(BattleAnimationPage_link)
+    battleCount += 1
+
+    ClanMemberListPage_link = '/ange/clan/ClanMemberListPage;jsessionid=%s' % (_jsessionid)
+    ClanMemberListPage = ange_request(ClanMemberListPage_link)
+    battleTicket = int(ClanMemberListPage.xpath('//div[@class="msgArea"]//span[@class="fontRed"]/text()')[0])
+    
+  return 'clanSim %s rounds' % (battleCount)
 
 def status():
   ange_MyPage()
@@ -434,13 +496,16 @@ def auto():
         # do quest only if sp is high
         quest(adam=True)
       elif _clanBattle and int(config.get('ange', 'DO_COMBAT')) == 2:
-        doSmartCombat()
+        doCombat_combo()
+      elif _clanBattle and int(config.get('ange', 'DO_COMBAT')) == 3:
+        doCombat_crystal()
       else:
         time.sleep(1 * 60)
     except KeyboardInterrupt:
       sys.exit(1)
-    except:
-      time.sleep(5 * 60)
+    except Exception as exceptMsg:
+      print exceptMsg
+      time.sleep(1 * 60)
 
 def execution(configFile, execFunc):
   global config
