@@ -39,9 +39,13 @@ joinchan(channel, channel_pass) # Join the channel using the functions we previo
 
 def ange_sys_command(target, command):
   if command == 'start':
-    commandString = "python2.7 ange.py %s auto & 2&>/dev/null" % (target)
+    commandString = "python ange.py %s auto &" % (target)
   if command == 'stop':
     commandString = "ps -ax | grep 'python ange.py %s auto' | awk '{print $1}' | xargs kill -9" % (target)
+  if command == 'restart':
+    ange_sys_command(target, 'stop')
+    ange_sys_command(target, 'start')
+    return
   os.popen(commandString)
   return
 
@@ -63,6 +67,7 @@ def ange_conf_print(target):
     sendmsg("%s = %s" % (confItem, tmpConfig.get('ange', confItem)))
   return
 
+flag_watchdog = False
 while 1: # Be careful with these! it might send you to an infinite loop
   ircmsg = ircsock.recv(2048) # receive data from the server
   ircmsg = ircmsg.strip('\n\r') # removing any unnecessary linebreaks.
@@ -70,6 +75,12 @@ while 1: # Be careful with these! it might send you to an infinite loop
 
   if ircmsg.find("PING :") != -1: # if the server pings us then we've got to respond!
     ping()
+    if flag_watchdog:
+      for configFile in sorted(glob.glob('*/ange.conf')):
+        response = ange.execution(configFile, 'status')
+        if response.find('(Stopped)') > 0:
+          ange_sys_command(configFile.split('/')[0], 'restart')
+          sendmsg('%s restarted' % (configFile.split('/')[0]))
     
 #  ircmsg = ircmsg.lower()
 
@@ -142,7 +153,12 @@ while 1: # Be careful with these! it might send you to an infinite loop
     except Exception as exceptMsg:
       sendmsg("exception - %s" % (exceptMsg))
 
+  if len(ircmsg.split(':.watchdog')) == 2:
+    flag_watchdog = False if flag_watchdog else True
+    sendmsg("watchdog is now: %s" % (flag_watchdog))
+
   # log uploader
+  '''
   for logFile in glob.glob('*/log'):
     try:
       fh = open(logFile, 'r')
@@ -152,3 +168,5 @@ while 1: # Be careful with these! it might send you to an infinite loop
       os.remove(logFile)
     except IOError:
       pass
+  '''
+  
