@@ -68,7 +68,7 @@ def ange_request(path):
         parser = etree.HTMLParser()
         content_lxml = etree.parse(StringIO(content_html), parser)
         next_url = content_lxml.xpath('//span[@id="nextUrl"]/text()')
-        if next_url:
+        if next_url and (pageName.find('Quest') == -1):
           return ange_request(next_url[0])
         return content_lxml
     except:
@@ -156,6 +156,59 @@ def doQuest(adam=False):
   ange_request(nextUrl)
   return doFlag
 
+def doChase():
+  '''
+    special function for chase event (2015/03/13 ~ 2015/03/24)
+  '''
+  ange_MyPage()
+  EventChaseQuestPage_link = 'http://web.ange-app.com/ange/eventChase/EventChaseQuestPage;jsessionid=%s?historyBack_deny=1' % (_jsessionid)
+  EventChaseQuestPage = ange_request(EventChaseQuestPage_link)
+  
+  # select route
+  if EventChaseQuestPage.xpath('//span[@class="resultImg"]'):
+    resultImgList = EventChaseQuestPage.xpath('//span[@class="resultImg"]/text()')
+    nextUrl = False
+    for resultImg in resultImgList:
+      # goto ??? area
+      if resultImg == 'http://img.sega-net.com/ange/resource/event/event13_chase/animation/route_icon_00.png':
+        nextUrl = '/ange/eventChase/EventChaseRouteChoicePage;jsessionid=%s?cscce=%s&amp;historyBack_deny=1' % (_jsessionid, resultImgList.index(resultImg) + 1)
+    if nextUrl is False:
+      # goto next area
+      for resultImg in resultImgList:
+        if resultImg == 'http://img.sega-net.com/ange/resource/event/event13_chase/animation/route_icon_01.png':
+          nextUrl = '/ange/eventChase/EventChaseRouteChoicePage;jsessionid=%s?cscce=%s&amp;historyBack_deny=1' % (_jsessionid, resultImgList.index(resultImg) + 1)
+    ange_request(nextUrl)
+
+  # route progress
+  if EventChaseQuestPage.xpath('//span[@id="rouletteImg"]'):
+    # get quest content
+    nextUrl = EventChaseQuestPage.xpath('//span[@id="nextUrl"]/text()')[0]
+    questAction_list = EventChaseQuestPage.xpath('//span[@id="action"]/span/text()')
+    print questAction_list
+    
+    # decide to do quest or not
+    nextUrl += '&qpc=%s' % (len(questAction_list))
+    ange_request(nextUrl)
+    
+  # boss fight
+  if EventChaseQuestPage.xpath('//span[@id="bossImg"]'):
+    # pick unit to combat
+    fightUnit_list = EventChaseQuestPage.xpath('//div[@id="prm_border_infos"]/span/text()')
+    fightingUnit = doCombatPickUnit(fightUnit_list, 1)
+    EventChaseBattleRedirectPage_link = '/ange/eventChase/EventChaseBattleRedirectPage;jsessionid=%s?historyBack_deny=1&ucid=%s' % (_jsessionid, ','.join(fightingUnit))
+    EventChaseBattleRedirectPage = ange_request(EventChaseBattleRedirectPage_link)
+    
+  # boss fight win
+  if EventChaseQuestPage.xpath('//div[@id="event_chase_popup_next_url"]'):
+    EventChaseWinRedirectPage_link = EventChaseQuestPage.xpath('//div[@id="event_chase_popup_next_url"]/text()')[0]
+    EventChaseWinRedirectPage = ange_request(EventChaseWinRedirectPage_link)
+    
+  # chase bonus
+  if re.findall('EventChaseBonusChoiceAnimationPage', etree.tostring(EventChaseQuestPage)):
+    EventChaseBonusChoiceAnimationPage_link = etree.tostring(EventChaseQuestPage).findall('EventChaseBonusChoiceAnimationPage')[0]
+    EventChaseBonusChoiceAnimationPage = ange_request(EventChaseBonusChoiceAnimationPage_link)
+    
+
 def doEvent():
   ''' type 1: delicated page to event stage page
   ange_MyPage()
@@ -166,14 +219,18 @@ def doEvent():
   MapSelectPage_link = re.findall('href=\"(.*MapSelectPage.*)\" ', etree.tostring(EventTopPage))[0]
   type 1 ends '''
   
-  ''' type 2: additional link in stage selection '''
+  ''' type 2: additional link in stage selection
   MyPage = ange_MyPage()
   StageSelectPage_link = re.findall('href=\"(.*StageSelectPage.*)\" ', etree.tostring(MyPage))[1]
   
   # find map from stage
   StageSelectPage = ange_request(StageSelectPage_link)
   MapSelectPage_link = re.findall('href=\"(.*MapSelectPage.*)\" ', etree.tostring(StageSelectPage))[-2]
-  ''' type 2 ends '''
+  type 2 ends '''
+  
+  ''' type 3: event chase '''
+  return doChase()
+  ''' type 3 ends '''
     
   # find next area in map
   MapSelectPage = ange_request(MapSelectPage_link)
